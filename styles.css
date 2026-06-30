@@ -1,5 +1,7 @@
-/* ── RESET & ROOT ── */
-html { cursor: url('cursor.png') 0 0, auto; }
+html {
+  cursor: url('cursor.png') 0 0, auto;
+}
+
 :root {
   --picker-dark-stripe: rgba(0, 0, 0, .1);
   --bg-color: #1a1a1a;
@@ -56,7 +58,7 @@ body {
   transition: opacity 0.08s ease;
 }
 
-/* ── MAIN LAYOUT ── */
+
 .app-container {
   display: grid;
   grid-template-columns: 300px 200px 1fr;
@@ -69,7 +71,7 @@ body {
   transition: opacity 0.3s ease;
 }
 
-/* ── LEFT PANEL ── */
+
 .left-panel {
   background: linear-gradient(180deg, #141414 0%, #0e0e0e 100%);
   padding: 28px 12px 30px 12px;
@@ -110,7 +112,7 @@ body {
   opacity: 0.3;
 }
 
-/* Slanted Cards */
+
 .slant-list {
   display: flex;
   flex-direction: column;
@@ -195,7 +197,7 @@ body {
   color: #fff;
 }
 
-/* ── RIGHT PANEL (CARDS) ── */
+
 .right-panel {
   background: transparent;
   overflow-y: scroll;
@@ -211,9 +213,11 @@ body {
   scrollbar-width: thin;
   scrollbar-color: #333 #1a1a1a;
 }
+
 .right-panel {
   scrollbar-width: thin;
 }
+
 .right-panel::-webkit-scrollbar {
   width: 5px;
 }
@@ -238,7 +242,7 @@ body {
   justify-content: center;
 }
 
-/* Brutalist Osu! Style Cards */
+
 .card {
   position: relative;
   width: 92%;
@@ -332,10 +336,12 @@ body {
   gap: 2px;
   height: 1.8em;
 }
+
 .card-badge.extra {
   background: #8b3a3a;
   color: #fff;
 }
+
 .card.active .card-badge.extra {
   background: #c45a5a;
   color: #000;
@@ -379,7 +385,7 @@ body {
   background: #fff;
 }
 
-/* ── GAME LAYER ── */
+
 #game-layer {
   position: absolute;
   inset: 0;
@@ -512,7 +518,7 @@ canvas {
   clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
 }
 
-/* ── EDITOR LAYER ── */
+
 #editor-layer {
   position: absolute;
   top: 0;
@@ -784,7 +790,7 @@ canvas {
   transform: rotate(-4deg) translateX(-5%);
 }
 
-/* Misc UI */
+
 .back-btn {
   position: absolute;
   top: 25px;
@@ -998,7 +1004,7 @@ canvas {
   animation: slideDown 0.3s ease-in forwards;
 }
 
-/* ── END SCREEN OVERLAY ── */
+
 #end-overlay {
   position: fixed;
   inset: 0;
@@ -1107,13 +1113,19 @@ canvas {
 }
 
 #pause-overlay {
-  position: fixed; inset: 0; z-index: 300;
-  background: rgba(0,0,0,0.85);
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(0, 0, 0, 0.85);
   display: none;
   justify-content: center;
   align-items: center;
 }
-#pause-overlay.show { display: flex; }
+
+#pause-overlay.show {
+  display: flex;
+}
+
 #pause-box {
   background: #111;
   padding: 40px 60px;
@@ -1123,22 +1135,36 @@ canvas {
   gap: 16px;
   clip-path: polygon(16px 0, 100% 0, calc(100% - 16px) 100%, 0 100%);
 }
+
 #pause-box h2 {
-  font-weight: 900; font-size: 2.5rem; letter-spacing: 0.08em;
+  font-weight: 900;
+  font-size: 2.5rem;
+  letter-spacing: 0.08em;
   margin-bottom: 12px;
 }
+
 #pause-box button {
-  padding: 14px 50px; width: 100%;
-  font-family: 'Raleway'; font-weight: 900; font-size: 0.9rem;
-  text-transform: uppercase; letter-spacing: 0.15em;
-  border: none; cursor: url('cursor.png') 0 0, pointer;
-  background: #1f1f1f; color: #888;
+  padding: 14px 50px;
+  width: 100%;
+  font-family: 'Raleway';
+  font-weight: 900;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  border: none;
+  cursor: url('cursor.png') 0 0, pointer;
+  background: #1f1f1f;
+  color: #888;
   transition: all 0.15s ease;
   clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
 }
-#pause-box button:hover { background: #2a2a2a; color: #fff; }
 
-/* ── SCORE SIDEBAR ── */
+#pause-box button:hover {
+  background: #2a2a2a;
+  color: #fff;
+}
+
+
 .score-panel {
   background: linear-gradient(180deg, #141414 0%, #0e0e0e 100%);
   overflow-y: auto;
@@ -1210,7 +1236,7 @@ canvas {
   padding: 4px 0;
   min-width: 150px;
   display: none;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
   clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
 }
 

@@ -1,8 +1,4 @@
-/**
- * DERC_ CORE ENGINE
- */
 
-// ─── UTILS & AUDIO CONTEXT ───
 const AudioCtx = new (window.AudioContext || window.webkitAudioContext)();
 let masterGain = AudioCtx.createGain();
 masterGain.connect(AudioCtx.destination);
@@ -34,11 +30,11 @@ const Synth = {
 };
 
 
-// Base64 Audio Decoder Cache
+
 const AudioCache = {};
 async function getAudioBuffer(base64Data) {
   if (!base64Data) return null;
-  const hash = base64Data.substring(0, 100); // rudimentary cache key
+  const hash = base64Data.substring(0, 100);
   if (AudioCache[hash]) return AudioCache[hash];
 
   showLoading();
@@ -56,7 +52,7 @@ async function getAudioBuffer(base64Data) {
   }
 }
 
-// Image Resizer (Compress to DataURI before storing)
+
 function resizeImageFile(file, callback) {
   const reader = new FileReader();
   reader.onload = (e) => {
@@ -70,14 +66,14 @@ function resizeImageFile(file, callback) {
       canvas.width = width; canvas.height = height;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, width, height);
-      callback(canvas.toDataURL('image/jpeg', 0.6)); // compressed jpg
+      callback(canvas.toDataURL('image/jpeg', 0.6));
     };
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
 
-    const DB = {
+const DB = {
   async open() {
     return new Promise((resolve, reject) => {
       const req = indexedDB.open('DercMaps', 1);
@@ -121,10 +117,10 @@ function resizeImageFile(file, callback) {
   },
 };
 
-    function showLoading() { let el = document.getElementById('loading-overlay'); el.style.display = 'flex'; requestAnimationFrame(() => el.style.opacity = '1'); }
-    function hideLoading() { let el = document.getElementById('loading-overlay'); el.style.opacity = '0'; setTimeout(() => el.style.display = 'none', 300); }
+function showLoading() { let el = document.getElementById('loading-overlay'); el.style.display = 'flex'; requestAnimationFrame(() => el.style.opacity = '1'); }
+function hideLoading() { let el = document.getElementById('loading-overlay'); el.style.opacity = '0'; setTimeout(() => el.style.display = 'none', 300); }
 
-    function dataUriToBlobUrl(dataUri) {
+function dataUriToBlobUrl(dataUri) {
   if (!dataUri || typeof dataUri !== 'string' || !dataUri.startsWith('data:')) return '';
   let mime = dataUri.split(';')[0].split(':')[1];
   let raw = atob(dataUri.split(',')[1]);
@@ -133,7 +129,7 @@ function resizeImageFile(file, callback) {
   return URL.createObjectURL(new Blob([arr], { type: mime }));
 }
 
-// ─── STATE MANAGEMENT ───
+
 const App = {
   view: 'select',
   maps: [],
@@ -141,9 +137,9 @@ const App = {
   activeMapIndex: 0,
   beatTimer: null,
   beatTimeout: null,
-      previewSource: null,
-      _previewing: false, _previewingIdx: -1, _userSelected: false,
-      _searchQuery: '', _sortBy: 'bpm', _visibleIdx: [],
+  previewSource: null,
+  _previewing: false, _previewingIdx: -1, _userSelected: false,
+  _searchQuery: '', _sortBy: 'bpm', _visibleIdx: [],
 
   async init() {
     this.maps = [];
@@ -214,7 +210,7 @@ const App = {
       document.getElementById('game-back').style.display = 'none';
 
       if (v !== 'game' && Game.isPlaying) this.exitGame();
-        if (v === 'editor') Editor.init({ metadata: { title: '', artist: '', bpm: 120, difficulty: 1 }, notes: [] });
+      if (v === 'editor') Editor.init({ metadata: { title: '', artist: '', bpm: 120, difficulty: 1 }, notes: [] });
       if (v === 'select') {
         this.hideEndScreen();
         this.buildMapUI();
@@ -269,7 +265,7 @@ const App = {
     <div class="card-overlay"></div>
     <div class="card-artist">${m.metadata.artist}</div>
     <div class="card-title">${m.metadata.title}</div>
-    <div class="card-meta"><span class="card-badge">${pds}</span><span class="card-badge">${m.metadata.bpm} BPM</span><span class="card-badge">${m._audioBuffer ? Math.floor(m._audioBuffer.duration / 60) + ':' + String(Math.floor(m._audioBuffer.duration % 60)).padStart(2, '0') : '?:??'}</span>${['Break the Hierarchie','R.I.P','Looping the rooms'].includes(m.metadata.title) ? '<span class="card-badge extra">v0.2</span>' : ''}</div>
+    <div class="card-meta"><span class="card-badge">${pds}</span><span class="card-badge">${m.metadata.bpm} BPM</span><span class="card-badge">${m._audioBuffer ? Math.floor(m._audioBuffer.duration / 60) + ':' + String(Math.floor(m._audioBuffer.duration % 60)).padStart(2, '0') : '?:??'}</span>${['Break the Hierarchie', 'R.I.P', 'Looping the rooms'].includes(m.metadata.title) ? '<span class="card-badge extra">v0.2</span>' : ''}</div>
   `;
       card.onclick = () => this.selectMap(i);
       card.ondblclick = () => this.playSelected();
@@ -313,7 +309,7 @@ const App = {
     }
   },
 
-  // ── Sync UI Beat Pulse ──
+
   startUIPulse(bpm) {
     this.stopUIPulse();
     let interval = 60000 / bpm;
@@ -328,13 +324,13 @@ const App = {
     const activeCard = document.querySelector('.card.active');
     if (!activeCard) return;
 
-    // Quick intro pop
+
     activeCard.style.setProperty('--beat-offset', '-12px');
     let flash = activeCard.querySelector('.card-flash');
     if (flash) {
       flash.style.transition = 'none';
       flash.style.opacity = '0.05';
-      flash.offsetHeight; // force reflow
+      flash.offsetHeight;
       flash.style.transition = 'opacity 0.35s ease-out';
     }
 
@@ -345,7 +341,7 @@ const App = {
 
     if (this.beatTimeout) clearTimeout(this.beatTimeout);
 
-    // Slow decay
+
     this.beatTimeout = setTimeout(() => {
       if (activeCard) {
         activeCard.style.setProperty('--beat-offset', '0px');
@@ -398,16 +394,16 @@ const App = {
     }
   },
 
-      selectMap(i) {
-        if (this.activeMapIndex === i) return;
-        this._userSelected = true;
-        this.activeMapIndex = i;
-        this.onSelectionChange(i);
-        let card = this.cards[i];
-        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        this.updateStepping();
-        setTimeout(() => this._userSelected = false, 500);
-      },
+  selectMap(i) {
+    if (this.activeMapIndex === i) return;
+    this._userSelected = true;
+    this.activeMapIndex = i;
+    this.onSelectionChange(i);
+    let card = this.cards[i];
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    this.updateStepping();
+    setTimeout(() => this._userSelected = false, 500);
+  },
 
   onSelectionChange(i) {
     let map = this.maps[i];
@@ -578,7 +574,7 @@ const App = {
   },
 };
 
-// ─── GAME ENGINE ───
+
 const Game = {
   canvas: document.getElementById('gameCanvas'),
   ctx: document.getElementById('gameCanvas').getContext('2d'),
@@ -606,7 +602,7 @@ const Game = {
 
     if (this.map.metadata.imageBlob || this.map.metadata.imageData) document.getElementById('game-bg').src = this.map.metadata.imageBlob || this.map.metadata.imageData;
 
-    // Load Audio if exists
+
     let buffer = await getAudioBuffer(this.map.metadata.audioBlob || this.map.metadata.audioData);
 
     this.startTime = AudioCtx.currentTime + 1.0;
@@ -795,29 +791,29 @@ const Game = {
       return;
     }
 
-    // Pulse beat mapped to game bg & hub
+
     let beatLen = 60 / this.map.metadata.bpm;
     let beatPhase = ((timeNow % beatLen) / beatLen);
     let pulse = 1 - Math.pow(beatPhase, 2);
 
-    // Grid lines
+
     this.ctx.strokeStyle = `rgba(255,255,255, ${0.05 + pulse * 0.05})`;
     this.ctx.lineWidth = 1; this.ctx.beginPath();
     this.ctx.moveTo(this.cx, 0); this.ctx.lineTo(this.cx, this.canvas.height);
     this.ctx.moveTo(0, this.cy); this.ctx.lineTo(this.canvas.width, this.cy);
     this.ctx.stroke();
 
-    // Center Hub
+
     this.ctx.fillStyle = `rgba(255,255,255,${0.05 + pulse * 0.1})`;
     this.ctx.fillRect(this.cx - 30, this.cy - 30, 60, 60);
     this.ctx.strokeStyle = `rgba(255,255,255,${0.2 + pulse * 0.3})`;
     this.ctx.strokeRect(this.cx - 30, this.cy - 30, 60, 60);
 
-    // Receptors
+
     const drawRec = (x, y) => { this.ctx.strokeStyle = '#444'; this.ctx.lineWidth = 2; this.ctx.strokeRect(x - 20, y - 20, 40, 40); };
     drawRec(this.cx, this.cy - 60); drawRec(this.cx, this.cy + 60); drawRec(this.cx - 60, this.cy); drawRec(this.cx + 60, this.cy);
 
-    // Notes
+
     this.ctx.fillStyle = '#fff';
     for (let i = this._nextNoteIdx; i < this.notes.length; i++) {
       let n = this.notes[i];
@@ -841,11 +837,11 @@ const Game = {
       this.ctx.globalAlpha = 1.0;
     }
 
-    // Progress bar
+
     let dur = this.map._audioBuffer ? this.map._audioBuffer.duration : 1;
     document.getElementById('hud-progress').style.width = Math.min(timeNow / dur, 1) * 100 + '%';
 
-    // Particles
+
     for (let i = this.particles.length - 1; i >= 0; i--) {
       let p = this.particles[i];
       if (p.type === 'confetti') { p.life -= p.decay; } else { p.life -= 0.05; }
@@ -860,7 +856,7 @@ const Game = {
   }
 };
 
-// ─── PREVIEW CONFETTI (select screen) ───
+
 const PreviewConfetti = {
   canvas: document.getElementById('preview-confetti'),
   ctx: null, particles: [], rafId: null, drops: [], _triggered: [], _startTime: 0,
@@ -939,7 +935,7 @@ const PreviewConfetti = {
   },
 };
 
-// ─── MAP EDITOR (play-along recording) ───
+
 const Editor = {
   map: null,
   isRecording: false,
@@ -1238,10 +1234,10 @@ const Editor = {
   }
 };
 
-// Start loading maps immediately (no AudioCtx needed yet)
+
 App.init();
 
-// Boot — startup screen
+
 let _titleDone = false, _mapsLoaded = false;
 
 document.getElementById('start-btn').onclick = async () => {
@@ -1272,12 +1268,12 @@ document.getElementById('start-btn').onclick = async () => {
     }
   }, 60);
 
-  // fallback loading text after 3s if maps not done
+
   setTimeout(() => {
     if (!_mapsLoaded) document.getElementById('start-loading').style.display = 'block';
   }, 3000);
 
-  // poll for maps done
+
   (function waitMaps() {
     if (App.maps.length) { _mapsLoaded = true; tryTransition(); }
     else setTimeout(waitMaps, 100);

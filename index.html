@@ -4,9 +4,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Derc_ · pure rhythm</title>
+  <title>Derc_</title>
 
-  <!-- Raleway from Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@200;800&display=swap" rel="stylesheet" />
@@ -15,7 +14,9 @@
 </head>
 
 <body>
-  <div id="bg-blur-wrap"><img id="bg-blur"><div id="bg-flash"></div></div>
+  <div id="bg-blur-wrap"><img id="bg-blur">
+    <div id="bg-flash"></div>
+  </div>
   <div id="start-modal">
     <div class="start-inner">
       <div class="start-title" id="start-title">Derc_</div>
@@ -49,9 +50,14 @@
     </div>
   </div>
 
-  <div id="pause-overlay"><div id="pause-box"><h2>PAUSED</h2><button id="pause-resume">Resume</button><button id="pause-restart">Restart</button><button id="pause-quit">Quit</button></div></div>
+  <div id="pause-overlay">
+    <div id="pause-box">
+      <h2>PAUSED</h2><button id="pause-resume">Resume</button><button id="pause-restart">Restart</button><button
+        id="pause-quit">Quit</button>
+    </div>
+  </div>
 
-  <!-- UI Map Selection -->
+
   <div class="app-container" id="ui-layer">
     <aside class="left-panel">
       <div class="menu-box">Derc_</div>
@@ -68,23 +74,27 @@
     <main class="right-panel" id="scrollContainer">
       <div class="cards-wrapper" id="cardsWrapper"></div>
     </main>
-<div class="search-bar">
-  <input id="search-input" type="text" placeholder="Search maps...">
-  <select id="sort-select">
-    <option value="bpm">BPM</option>
-    <option value="diff">Difficulty</option>
-    <option value="title">Title</option>
-  </select>
-</div>
+    <div class="search-bar">
+      <input id="search-input" type="text" placeholder="Search maps...">
+      <select id="sort-select">
+        <option value="bpm">BPM</option>
+        <option value="diff">Difficulty</option>
+        <option value="title">Title</option>
+      </select>
+    </div>
   </div>
 
-  <!-- Game Layer -->
+
   <div id="game-layer">
     <img id="game-bg" src="" alt="">
     <div class="back-btn" onclick="App.exitGame()" id="game-back">← Back</div>
     <div class="game-hud">
-      <div class="hud-top-bar"><div class="hud-health" id="hud-health"></div></div>
-      <div class="hud-bottom-bar"><div class="hud-progress" id="hud-progress"></div></div>
+      <div class="hud-top-bar">
+        <div class="hud-health" id="hud-health"></div>
+      </div>
+      <div class="hud-bottom-bar">
+        <div class="hud-progress" id="hud-progress"></div>
+      </div>
       <div class="hud-top-right">
         <div class="hud-score" id="hud-score">000000</div>
         <div class="hud-acc" id="hud-acc">100%</div>
@@ -99,7 +109,7 @@
     <canvas id="gameCanvas"></canvas>
   </div>
 
-  <!-- Editor Layer -->
+
   <div id="editor-layer">
     <div class="editor-top">
       <div class="editor-controls">
@@ -173,7 +183,10 @@
 
 
   <button id="play-btn">PLAY</button>
-  <div id="ctx-menu"><div class="ctx-item" id="ctx-save">Save as file</div><div class="ctx-item ctx-danger" id="ctx-delete">Delete</div></div>
+  <div id="ctx-menu">
+    <div class="ctx-item" id="ctx-save">Save as file</div>
+    <div class="ctx-item ctx-danger" id="ctx-delete">Delete</div>
+  </div>
 
   <input type="file" id="file-import" accept=".dcm" style="display:none" onchange="App.importMapFile(event)">
 
@@ -189,7 +202,7 @@
   </div>
 
   <div id="loading-overlay">
-    <h2>Decoding Audio...</h2>
+    <h2>Doing stuff...</h2>
   </div>
 
   <canvas id="preview-confetti" style="position:fixed;inset:0;z-index:100;pointer-events:none;display:none"></canvas>
