@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Derc_ · pure rhythm</title>
+
+  <!-- Raleway from Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@200;800&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div id="bg-blur-wrap"><img id="bg-blur"><div id="bg-flash"></div></div>
+  <div id="start-modal">
+    <div class="start-inner">
+      <div class="start-title" id="start-title">Derc_</div>
+      <div class="start-sub" id="start-sub">pure rhythm</div>
+      <button id="start-btn">START</button>
+      <div id="start-loading">loading...</div>
+    </div>
+  </div>
+
+  <div id="end-overlay"></div>
+  <div id="end-screen">
+    <h2 id="end-title">YOU WIN</h2>
+    <div class="grade" id="end-grade"></div>
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="label">Score</div>
+        <div class="value" id="end-score"></div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Accuracy</div>
+        <div class="value" id="end-acc"></div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Best Combo</div>
+        <div class="value" id="end-combo"></div>
+      </div>
+    </div>
+    <div class="end-btns">
+      <button id="end-share">Share Map</button>
+      <button class="primary" id="end-back">Go Back</button>
+    </div>
+  </div>
+
+  <div id="pause-overlay"><div id="pause-box"><h2>PAUSED</h2><button id="pause-resume">Resume</button><button id="pause-restart">Restart</button><button id="pause-quit">Quit</button></div></div>
+
+  <!-- UI Map Selection -->
+  <div class="app-container" id="ui-layer">
+    <aside class="left-panel">
+      <div class="menu-box">Derc_</div>
+      <div class="slant-list">
+        <div class="slant-card active-slant" onclick="App.setView('select')">Select Map</div>
+        <div class="slant-card" onclick="App.setView('editor')">Map Editor</div>
+        <div class="slant-card" onclick="App.openImportModal()">Import Map</div>
+      </div>
+    </aside>
+    <div class="score-panel" id="score-panel">
+      <h3>Top Scores</h3>
+      <div id="score-list"></div>
+    </div>
+    <main class="right-panel" id="scrollContainer">
+      <div class="cards-wrapper" id="cardsWrapper"></div>
+    </main>
+<div class="search-bar">
+  <input id="search-input" type="text" placeholder="Search maps...">
+  <select id="sort-select">
+    <option value="bpm">BPM</option>
+    <option value="diff">Difficulty</option>
+    <option value="title">Title</option>
+  </select>
+</div>
+  </div>
+
+  <!-- Game Layer -->
+  <div id="game-layer">
+    <img id="game-bg" src="" alt="">
+    <div class="back-btn" onclick="App.exitGame()" id="game-back">← Back</div>
+    <div class="game-hud">
+      <div class="hud-top-bar"><div class="hud-health" id="hud-health"></div></div>
+      <div class="hud-bottom-bar"><div class="hud-progress" id="hud-progress"></div></div>
+      <div class="hud-top-right">
+        <div class="hud-score" id="hud-score">000000</div>
+        <div class="hud-acc" id="hud-acc">100%</div>
+      </div>
+      <div class="hud-bottom-left">
+        <div class="hud-combo-value" id="hud-combo">x0</div>
+      </div>
+      <div class="key-hints">
+        <span>W</span> TOP &nbsp; <span>A</span> LEFT &nbsp; <span>S</span> BOTTOM &nbsp; <span>D</span> RIGHT
+      </div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+  </div>
+
+  <!-- Editor Layer -->
+  <div id="editor-layer">
+    <div class="editor-top">
+      <div class="editor-controls">
+        <div class="editor-btn" onclick="App.setView('select')">EXIT</div>
+        <div class="editor-btn primary" id="ed-record-btn" onclick="Editor.toggleRecord()">RECORD</div>
+        <div class="editor-btn" id="ed-timeout-btn" onclick="Editor.toggleTimeout()">TIMEOUT</div>
+      </div>
+      <div class="editor-controls">
+        <input type="file" id="fileImport" accept=".dcm" style="display:none" onchange="Editor.importFile(event)">
+        <div class="editor-btn" onclick="document.getElementById('fileImport').click()">LOAD</div>
+        <div class="editor-btn primary" onclick="Editor.exportDCM()">SAVE</div>
+      </div>
+    </div>
+    <div class="editor-main">
+      <div class="editor-sidebar">
+        <div class="prop-group">
+          <label>Map Title</label>
+          <input type="text" id="ed-title" onchange="Editor.updateMeta('title', this.value)">
+        </div>
+        <div class="prop-group">
+          <label>Artist</label>
+          <input type="text" id="ed-artist" onchange="Editor.updateMeta('artist', this.value)">
+        </div>
+        <div class="prop-group">
+          <label>BPM (Tempo)</label>
+          <input type="number" id="ed-bpm" onchange="Editor.updateMeta('bpm', parseFloat(this.value))">
+        </div>
+        <div class="prop-group">
+          <label>Difficulty (1–13)</label>
+          <input type="number" id="ed-difficulty" min="1" max="13"
+            onchange="Editor.updateMeta('difficulty', parseInt(this.value))">
+        </div>
+        <div style="height: 20px;"></div>
+        <div class="prop-group">
+          <label>Cover Image</label>
+          <input type="file" id="ed-img-upload" accept="image/*" style="display:none"
+            onchange="Editor.uploadImage(event)">
+          <div class="file-upload-box" onclick="document.getElementById('ed-img-upload').click()" id="ed-img-lbl">
+            + Upload Image (JPG/PNG)
+          </div>
+        </div>
+        <div class="prop-group">
+          <label>Audio Track (.mp3)</label>
+          <input type="file" id="ed-audio-upload" accept="audio/*" style="display:none"
+            onchange="Editor.uploadAudio(event)">
+          <div class="file-upload-box" onclick="document.getElementById('ed-audio-upload').click()" id="ed-audio-lbl">
+            + Upload Audio
+          </div>
+        </div>
+        <div class="prop-group">
+          <label>Drops / Beat Drops</label>
+          <div class="player-bar">
+            <div class="player-btn" id="player-play-btn" onclick="Editor.playerPlay()">▶</div>
+            <input type="range" id="player-seek" min="0" max="0" step="0.01" oninput="Editor.playerSeek(this.value)">
+            <span class="player-time" id="player-time">0:00 / 0:00</span>
+          </div>
+          <div class="player-row">
+            <div class="editor-btn" onclick="Editor.markDrop()">MARK DROP</div>
+          </div>
+          <div id="drop-list"></div>
+        </div>
+      </div>
+      <div class="editor-record-area">
+        <div class="record-note-count" id="recordNoteCount">0</div>
+        <canvas id="record-canvas" width="300" height="300"></canvas>
+        <div class="record-status" id="recordStatus">Load audio, set BPM, press RECORD</div>
+      </div>
+    </div>
+  </div>
+
+
+
+  <button id="play-btn">PLAY</button>
+  <div id="ctx-menu"><div class="ctx-item" id="ctx-save">Save as file</div><div class="ctx-item ctx-danger" id="ctx-delete">Delete</div></div>
+
+  <input type="file" id="file-import" accept=".dcm" style="display:none" onchange="App.importMapFile(event)">
+
+  <div id="import-modal">
+    <div id="import-modal-bg"></div>
+    <div id="import-modal-box">
+      <h3>Import Map</h3>
+      <div class="import-drop" onclick="document.getElementById('file-import').click()">
+        Click to select a .dcm file
+      </div>
+      <div class="import-close" onclick="App.closeImportModal()">CANCEL</div>
+    </div>
+  </div>
+
+  <div id="loading-overlay">
+    <h2>Decoding Audio...</h2>
+  </div>
+
+  <canvas id="preview-confetti" style="position:fixed;inset:0;z-index:100;pointer-events:none;display:none"></canvas>
+
+
+  <script src="script.js"></script>
+</body>
+
+</html>
