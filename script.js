@@ -37,17 +37,14 @@ async function getAudioBuffer(base64Data) {
   const hash = base64Data.substring(0, 100);
   if (AudioCache[hash]) return AudioCache[hash];
 
-  showLoading();
   try {
     const res = await fetch(base64Data);
     const arr = await res.arrayBuffer();
     const buffer = await AudioCtx.decodeAudioData(arr);
     AudioCache[hash] = buffer;
-    hideLoading();
     return buffer;
   } catch (e) {
     console.error("Audio Decode Error:", e);
-    hideLoading();
     return null;
   }
 }
@@ -129,6 +126,46 @@ function dataUriToBlobUrl(dataUri) {
   return URL.createObjectURL(new Blob([arr], { type: mime }));
 }
 
+let _volume = 50, _volVelocity = 0, _volTimeout = null, _volAnimId = null;
+const _volCanvas = document.getElementById('volume-canvas');
+const _volCtx = _volCanvas.getContext('2d');
+
+function drawVolume(v) {
+  let c = _volCanvas, ctx = _volCtx, s = 100, ox = (c.width - s) / 2, oy = (c.height - s) / 2;
+  ctx.clearRect(0, 0, c.width, c.height);
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(ox, oy, s, s);
+  ctx.strokeStyle = '#fff';
+  let perim = s * 4, lit = (v / 100) * perim;
+  ctx.beginPath();
+  if (lit > 0) { let t = Math.min(lit, s); ctx.moveTo(ox, oy); ctx.lineTo(ox + t, oy); lit -= s; }
+  if (lit > 0) { let t = Math.min(lit, s); ctx.moveTo(ox + s, oy); ctx.lineTo(ox + s, oy + t); lit -= s; }
+  if (lit > 0) { let t = Math.min(lit, s); ctx.moveTo(ox + s, oy + s); ctx.lineTo(ox + s - t, oy + s); lit -= s; }
+  if (lit > 0) { let t = Math.min(lit, s); ctx.moveTo(ox, oy + s); ctx.lineTo(ox, oy + s - t); }
+  ctx.stroke();
+  document.getElementById('volume-label').textContent = Math.round(v);
+}
+
+function volTick() {
+  if (Math.abs(_volVelocity) < 0.05) { _volVelocity = 0; _volAnimId = null; _volTimeout = setTimeout(() => document.getElementById('volume-popup').classList.remove('show'), 300); return; }
+  _volume = Math.max(0, Math.min(100, _volume + _volVelocity));
+  _volVelocity *= 0.9;
+  masterGain.gain.setValueAtTime(_volume / 100, AudioCtx.currentTime);
+  previewGain.gain.value = 0.3 * (_volume / 100);
+  drawVolume(_volume);
+  document.getElementById('volume-popup').classList.add('show');
+  _volAnimId = requestAnimationFrame(volTick);
+}
+
+window.addEventListener('wheel', (e) => {
+  if (e.target.closest('#scrollContainer')) return;
+  e.preventDefault();
+  _volVelocity += -e.deltaY / 100;
+  clearTimeout(_volTimeout);
+  if (!_volAnimId) _volAnimId = requestAnimationFrame(volTick);
+}, { passive: false });
+
 
 const App = {
   view: 'select',
@@ -140,38 +177,47 @@ const App = {
   previewSource: null,
   _previewing: false, _previewingIdx: -1, _userSelected: false,
   _searchQuery: '', _sortBy: 'bpm', _visibleIdx: [],
+  _defaultTitles: new Set(['Looping the rooms', 'R.I.P', 'Break the Hierarchie', 'Zero talking']),
+  modes: { auto: false, fail: false, hc: false },
 
   async init() {
+    showLoading();
     this.maps = [];
     let stored = await DB.load();
     if (stored.length) {
+      let promises = [];
       for (let raw of stored) {
         if (!raw.metadata || !raw.notes) continue;
         raw.metadata.imageBlob = dataUriToBlobUrl(raw.metadata.imageData) || raw.metadata.imageData || '';
         raw.metadata.audioBlob = dataUriToBlobUrl(raw.metadata.audioData) || raw.metadata.audioData || '';
         let d = parseInt(raw.metadata.difficulty);
         raw.metadata.difficulty = (d >= 1 && d <= 13) ? d : 4;
-        raw._audioBuffer = await getAudioBuffer(raw.metadata.audioBlob || raw.metadata.audioData);
-        this.maps.push(raw);
+        promises.push(getAudioBuffer(raw.metadata.audioBlob || raw.metadata.audioData).then(buf => { raw._audioBuffer = buf; this.maps.push(raw); }));
       }
+      await Promise.all(promises);
     } else {
+      let promises = [];
       for (let name of ['Looping_the_rooms.dcm', 'R.I.P.dcm', 'Break_the_Hierarchie.dcm', 'Zero_talking.dcm']) {
-        try {
-          let res = await fetch(name);
-          let raw = await res.json();
-          if (raw.notes && raw.metadata) {
-            raw.metadata.imageBlob = dataUriToBlobUrl(raw.metadata.imageData) || raw.metadata.imageData;
-            raw.metadata.audioBlob = dataUriToBlobUrl(raw.metadata.audioData) || raw.metadata.audioData;
-            let d = parseInt(raw.metadata.difficulty);
-            raw.metadata.difficulty = (d >= 1 && d <= 13) ? d : 4;
-            raw._audioBuffer = await getAudioBuffer(raw.metadata.audioBlob || raw.metadata.audioData);
-            this.maps.push(raw);
-          }
-        } catch (e) { }
+        promises.push((async () => {
+          try {
+            let res = await fetch(name);
+            let raw = await res.json();
+            if (raw.notes && raw.metadata) {
+              raw.metadata.imageBlob = dataUriToBlobUrl(raw.metadata.imageData) || raw.metadata.imageData;
+              raw.metadata.audioBlob = dataUriToBlobUrl(raw.metadata.audioData) || raw.metadata.audioData;
+              let d = parseInt(raw.metadata.difficulty);
+              raw.metadata.difficulty = (d >= 1 && d <= 13) ? d : 4;
+              raw._audioBuffer = await getAudioBuffer(raw.metadata.audioBlob || raw.metadata.audioData);
+              this.maps.push(raw);
+            }
+          } catch (e) { }
+        })());
       }
+      await Promise.all(promises);
     }
     if (!this.maps.length) this.maps.push({ metadata: { title: "No Map", artist: "", bpm: 120, difficulty: 1 }, notes: [] });
     await DB.save(this.maps);
+    hideLoading();
     this.buildMapUI();
     this.bindEvents();
     this.startUIPulse(this.maps[0].metadata.bpm);
@@ -289,13 +335,7 @@ const App = {
       if (dist < minDist) { minDist = dist; closestIdx = i; }
     });
 
-    const maxDist = container.getBoundingClientRect().height * 0.8;
     this.cards.forEach((card, i) => {
-      const rect = card.getBoundingClientRect();
-      const dist = Math.abs((rect.top + rect.height / 2) - centerY);
-      let step = 0;
-      card.style.setProperty('--step', step);
-
       let realIdx = this._visibleIdx[i] ?? i;
       card.classList.toggle('active', realIdx === this.activeMapIndex);
     });
@@ -378,6 +418,7 @@ const App = {
     document.getElementById('end-score').textContent = g.score;
     document.getElementById('end-acc').textContent = (g.totalNotes === 0 ? 100 : Math.max(0, (g.hits / g.notes.filter(n => n.hit || n.missed).length) * 100)).toFixed(1) + '%';
     document.getElementById('end-combo').textContent = 'x' + g.bestCombo;
+    document.getElementById('end-share').style.display = !failed && g.map && !this._defaultTitles.has(g.map.metadata.title) ? 'inline-block' : 'none';
     document.getElementById('end-overlay').style.display = 'block';
     el.style.display = 'block';
     requestAnimationFrame(() => { document.getElementById('end-overlay').style.opacity = '1'; el.style.opacity = '1'; });
@@ -423,6 +464,7 @@ const App = {
 
   stopPreview() {
     this._previewing = false;
+    this._previewingIdx = -1;
     if (this.previewSource) {
       try { this.previewSource.stop(); } catch (e) { }
       this.previewSource.disconnect();
@@ -457,13 +499,24 @@ const App = {
     let remaining = buffer.duration - start;
     this._previewS2 = AudioCtx.createBufferSource();
     this._previewS2.buffer = buffer; this._previewS2.connect(previewGain);
-    this._previewS2.start(remaining > 0 ? remaining : 0, 0);
+    this._previewS2.start(remaining > 0 ? remaining : 0, start);
     PreviewConfetti.start(map.drops, AudioCtx.currentTime, _previewOffset);
   },
 
   playSelected() {
     let map = this.maps[this.activeMapIndex];
     if (map) this.startGame(map);
+  },
+
+  toggleMode(key) {
+    this.modes[key] = !this.modes[key];
+    document.getElementById('mode-' + key).classList.toggle('active', this.modes[key]);
+    this.updateModeHUD();
+  },
+
+  updateModeHUD() {
+    let active = Object.entries(this.modes).filter(([_, v]) => v).map(([k]) => k.toUpperCase()).join(' | ');
+    document.getElementById('hud-modes').textContent = active || '';
   },
 
   bindEvents() {
@@ -502,8 +555,21 @@ const App = {
       document.getElementById('bg-blur').style.transform = `translate(${x}px, ${y}px)`;
     });
     document.getElementById('play-btn').onclick = () => this.playSelected();
+    document.getElementById('mode-auto').onclick = () => this.toggleMode('auto');
+    document.getElementById('mode-fail').onclick = () => this.toggleMode('fail');
+    document.getElementById('mode-hc').onclick = () => this.toggleMode('hc');
     document.getElementById('end-back').onclick = () => { this.hideEndScreen(); this.setView('select'); };
-    document.getElementById('end-share').onclick = () => { };
+    document.getElementById('end-restart').onclick = () => { this.hideEndScreen(); this.playSelected(); };
+    document.getElementById('end-share').onclick = () => {
+      let m = Game.map;
+      if (!m || App._defaultTitles.has(m.metadata.title)) return;
+      let data = {
+        metadata: { title: m.metadata.title, artist: m.metadata.artist, bpm: m.metadata.bpm, difficulty: m.metadata.difficulty, imageData: m.metadata.imageData || '', audioData: m.metadata.audioData || '' },
+        notes: m.notes, breaks: m.breaks || [], drops: m.drops || [],
+      };
+      const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
+      a.download = `${m.metadata.title.replace(/\s+/g, '_')}.dcm`; a.click();
+    };
     document.getElementById('end-overlay').onclick = () => { this.hideEndScreen(); this.setView('select'); };
     document.getElementById('pause-resume').onclick = () => Game.togglePause();
     document.getElementById('pause-restart').onclick = () => { Game.togglePause(); App.playSelected(); };
@@ -529,6 +595,61 @@ const App = {
   },
   closeImportModal() {
     document.getElementById('import-modal').classList.remove('show');
+  },
+
+  openPlaylistModal() {
+    this.buildPlaylistUI();
+    document.getElementById('playlist-modal').classList.add('show');
+  },
+  closePlaylistModal() {
+    document.getElementById('playlist-modal').classList.remove('show');
+  },
+
+  buildPlaylistUI() {
+    let el = document.getElementById('pl-map-list');
+    if (!this.maps.length) { el.innerHTML = '<div style="color:#555;font-size:0.7rem;padding:12px;">No maps available</div>'; return; }
+    el.innerHTML = this.maps.map((m, i) => {
+      let dur = m._audioBuffer ? Math.floor(m._audioBuffer.duration / 60) + ':' + String(Math.floor(m._audioBuffer.duration % 60)).padStart(2, '0') : '?:??';
+      return `<label class="pl-map-item"><input type="checkbox" data-idx="${i}" checked><div class="pl-info"><div class="pl-title">${m.metadata.title}</div><div class="pl-artist">${m.metadata.artist || ''}</div></div><div class="pl-dur">${dur}</div></label>`;
+    }).join('');
+  },
+
+  exportPlaylist() {
+    let checks = document.querySelectorAll('#pl-map-list input[type="checkbox"]');
+    let selected = [];
+    checks.forEach(c => { if (c.checked) selected.push(this.maps[parseInt(c.dataset.idx)]); });
+    if (!selected.length) { alert('Select at least one map.'); return; }
+    let bundle = selected.map(m => ({
+      metadata: { title: m.metadata.title, artist: m.metadata.artist, bpm: m.metadata.bpm, difficulty: m.metadata.difficulty, imageData: m.metadata.imageData || '', audioData: m.metadata.audioData || '' },
+      notes: m.notes,
+      breaks: m.breaks || [],
+      drops: m.drops || [],
+    }));
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(bundle));
+    const a = document.createElement('a'); a.href = dataStr;
+    a.download = 'bundle.dcpl'; a.click();
+  },
+
+  async importPlaylist(e) {
+    const file = e.target.files[0]; if (!file) return;
+    try {
+      let bundle = JSON.parse(await file.text());
+      if (!Array.isArray(bundle) || !bundle.length) { alert('Invalid .dcpl file'); return; }
+      showLoading();
+      for (let raw of bundle) {
+        if (!raw.notes || !raw.metadata) continue;
+        raw.metadata.imageBlob = dataUriToBlobUrl(raw.metadata.imageData) || raw.metadata.imageData || '';
+        raw.metadata.audioBlob = dataUriToBlobUrl(raw.metadata.audioData) || raw.metadata.audioData || '';
+        raw.metadata.difficulty = Math.max(1, Math.min(13, parseInt(raw.metadata.difficulty) || 1));
+        raw._audioBuffer = await getAudioBuffer(raw.metadata.audioBlob || raw.metadata.audioData);
+        this.maps.push(raw);
+      }
+      await DB.save(this.maps);
+      hideLoading();
+      this.buildMapUI();
+      e.target.value = '';
+      alert(`Imported ${bundle.length} maps.`);
+    } catch (err) { hideLoading(); alert('Failed to load bundle'); }
   },
 
   async importMapFile(e) {
@@ -583,14 +704,18 @@ const Game = {
   windows: { perfect: 0.040, good: 0.080, okay: 0.120 },
   approachTime: 1.5,
   audioSource: null, rafId: null, ended: false, paused: false,
+  timeScale: 1,
+  _judgedCount: 0,
 
   async start(mapObj) {
     this.resize();
     window.addEventListener('resize', this.resize.bind(this));
     this.map = JSON.parse(JSON.stringify(mapObj));
     this.notes = [...this.map.notes].sort((a, b) => a.time - b.time);
+    this._judgedCount = 0;
     this._nextNoteIdx = 0;
     this.approachTime = Math.max(0.6, 2.2 - (this.map.metadata.difficulty || 1) * 0.12);
+    this.timeScale = App.modes.hc ? 2 : 1;
     this.breaks = this.map.breaks || [];
     this.drops = this.map.drops || [];
     this._dropsTriggered = new Array(this.drops.length).fill(false);
@@ -609,8 +734,10 @@ const Game = {
     this.isPlaying = true;
 
     if (buffer) {
+      this.map._audioBuffer = buffer;
       this.audioSource = AudioCtx.createBufferSource();
       this.audioSource.buffer = buffer;
+      this.audioSource.playbackRate.value = this.timeScale;
       this.audioSource.connect(masterGain);
       this.audioSource.start(this.startTime);
     }
@@ -637,7 +764,7 @@ const Game = {
     const pos = mapKeys[key];
     if (!pos) return;
 
-    let timeNow = AudioCtx.currentTime - this.startTime;
+    let timeNow = (AudioCtx.currentTime - this.startTime) * this.timeScale;
     let targetNote = null, targetIdx = -1;
     for (let i = 0; i < this.notes.length; i++) {
       let n = this.notes[i];
@@ -661,6 +788,7 @@ const Game = {
     this.score += points + (this.combo * 10); this.combo++;
     if (this.combo > this.bestCombo) this.bestCombo = this.combo;
     this.hits += (points / 300);
+    this._judgedCount++;
     if (points === 300) this.health = Math.min(100, this.health + 5);
     else if (points === 200) this.health = Math.min(100, this.health + 3);
     else this.health = Math.max(0, this.health - 2);
@@ -672,8 +800,10 @@ const Game = {
     if (this.combo > this.bestCombo) this.bestCombo = this.combo;
     this.combo = 0;
     this.health = Math.max(0, this.health - 18);
+    this._judgedCount++;
     this.updateHUD(); this.spawnText("MISS", "#f33");
-    if (this.health <= 0) this.die();
+    if (this.health <= 0 && !App.modes.fail) this.die();
+    if (App.modes.fail) this.health = 1;
   },
   die() {
     this.ended = true;
@@ -749,9 +879,12 @@ const Game = {
     if (this.paused) {
       if (this.rafId) cancelAnimationFrame(this.rafId);
       AudioCtx.suspend();
+      this._pauseTime = performance.now();
       document.getElementById('pause-overlay').classList.add('show');
     } else {
       AudioCtx.resume().then(() => {
+        let dt = (performance.now() - this._pauseTime) / 1000;
+        this.startTime += dt;
         document.getElementById('pause-overlay').classList.remove('show');
         this.loop();
       });
@@ -759,8 +892,8 @@ const Game = {
   },
 
   render() {
-    let timeNow = AudioCtx.currentTime - this.startTime;
-    if (!this.ended && this.notes.every(n => n.hit || n.missed) && timeNow > 1) {
+    let timeNow = (AudioCtx.currentTime - this.startTime) * this.timeScale;
+    if (!this.ended && this._judgedCount >= this.totalNotes && timeNow > 1) {
       this.ended = true;
       if (this.combo > this.bestCombo) this.bestCombo = this.combo;
       setTimeout(() => App.showEndScreen(this), 500);
@@ -820,6 +953,9 @@ const Game = {
       if (n.hit || n.missed) { this._nextNoteIdx = i + 1; continue; }
       let dt = n.time - timeNow;
 
+      if (App.modes.auto && Math.abs(dt) <= this.windows.perfect) {
+        n.hit = true; this.registerHit(300, n.position); this._nextNoteIdx = i + 1; continue;
+      }
       if (dt < -this.windows.okay) { n.missed = true; this.registerMiss(); this._nextNoteIdx = i + 1; continue; }
       if (dt > this.approachTime) break;
       if (dt <= 0) continue;
@@ -845,13 +981,20 @@ const Game = {
     for (let i = this.particles.length - 1; i >= 0; i--) {
       let p = this.particles[i];
       if (p.type === 'confetti') { p.life -= p.decay; } else { p.life -= 0.05; }
-      if (p.life <= 0) { this.particles.splice(i, 1); continue; }
+      if (p.life <= 0) { this.particles[i] = this.particles[this.particles.length - 1]; this.particles.pop(); continue; }
       this.ctx.globalAlpha = p.life;
       if (p.type === 'spark') { p.x += p.vx; p.y += p.vy; this.ctx.fillStyle = p.color; this.ctx.fillRect(p.x - 2, p.y - 2, 4, 4); }
       else if (p.type === 'text') { p.y += p.vy; this.ctx.fillStyle = p.color; this.ctx.font = '800 24px Raleway'; this.ctx.textAlign = 'center'; this.ctx.fillText(p.text, p.x, p.y); }
       else if (p.type === 'ring') { this.ctx.strokeStyle = '#fff'; this.ctx.lineWidth = 2; let s = (20 + (1 - p.life) * 30) * 2; this.ctx.strokeRect(p.x - s / 2, p.y - s / 2, s, s); }
-      else if (p.type === 'confetti') { p.x += p.vx; p.vy += 0.08; p.y += p.vy; p.rot += p.rv; this.ctx.save(); this.ctx.translate(p.x, p.y); this.ctx.rotate(p.rot); this.ctx.fillStyle = p.color; this.ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); this.ctx.restore(); }
+      else if (p.type === 'confetti') { p.x += p.vx; p.vy += 0.08; p.y += p.vy; p.rot += p.rv; this.ctx.translate(p.x, p.y); this.ctx.rotate(p.rot); this.ctx.fillStyle = p.color; this.ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); this.ctx.setTransform(1, 0, 0, 1, 0, 0); }
       this.ctx.globalAlpha = 1.0;
+    }
+
+    if (App.modes.auto) {
+      this.ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      this.ctx.font = '900 48px Raleway';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText('AUTO', this.cx, this.cy + 120);
     }
   }
 };
@@ -921,15 +1064,14 @@ const PreviewConfetti = {
     for (let i = this.particles.length - 1; i >= 0; i--) {
       let p = this.particles[i];
       p.life -= p.decay;
-      if (p.life <= 0) { this.particles.splice(i, 1); continue; }
+      if (p.life <= 0) { this.particles[i] = this.particles[this.particles.length - 1]; this.particles.pop(); continue; }
       p.x += p.vx; p.vy += 0.08; p.y += p.vy; p.rot += p.rv;
-      this.ctx.save();
       this.ctx.translate(p.x, p.y);
       this.ctx.rotate(p.rot);
       this.ctx.globalAlpha = p.life;
       this.ctx.fillStyle = p.color;
       this.ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-      this.ctx.restore();
+      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
     this.ctx.globalAlpha = 1;
   },

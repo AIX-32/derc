@@ -50,6 +50,7 @@
     </div>
     <div class="end-btns">
       <button id="end-share">Share Map</button>
+      <button id="end-restart">Restart</button>
       <button class="primary" id="end-back">Go Back</button>
     </div>
   </div>
@@ -67,6 +68,7 @@
       <div class="menu-box">Derc_</div>
       <div class="slant-list">
         <div class="slant-card active-slant" onclick="App.setView('select')">Select Map</div>
+        <div class="slant-card" onclick="App.openPlaylistModal()">Playlists</div>
         <div class="slant-card" onclick="App.setView('editor')">Map Editor</div>
         <div class="slant-card" onclick="App.openImportModal()">Import Map</div>
       </div>
@@ -74,6 +76,12 @@
     <div class="score-panel" id="score-panel">
       <h3>Top Scores</h3>
       <div id="score-list"></div>
+    </div>
+    <div class="mode-panel" id="mode-panel">
+      <h3>Gimmicks</h3>
+      <div class="mode-btn" id="mode-auto" title="Auto Polit — automatically hit every note perfectly">Auto Polit</div>
+      <div class="mode-btn" id="mode-fail" title="Fail Net — survive at minimum health, cannot die">Fail Net</div>
+      <div class="mode-btn" id="mode-hc" title="Hardcore — 2x song and note speed">Hardcore</div>
     </div>
     <main class="right-panel" id="scrollContainer">
       <div class="cards-wrapper" id="cardsWrapper"></div>
@@ -109,6 +117,7 @@
       <div class="key-hints">
         <span>W</span> TOP &nbsp; <span>A</span> LEFT &nbsp; <span>S</span> BOTTOM &nbsp; <span>D</span> RIGHT
       </div>
+      <div class="hud-modes" id="hud-modes"></div>
     </div>
     <canvas id="gameCanvas"></canvas>
   </div>
@@ -193,6 +202,7 @@
   </div>
 
   <input type="file" id="file-import" accept=".dcm" style="display:none" onchange="App.importMapFile(event)">
+  <input type="file" id="file-dcpl-import" accept=".dcpl" style="display:none" onchange="App.importPlaylist(event)">
 
   <div id="import-modal">
     <div id="import-modal-bg"></div>
@@ -205,12 +215,36 @@
     </div>
   </div>
 
+  <div id="playlist-modal">
+    <div id="playlist-modal-bg"></div>
+    <div id="playlist-modal-box">
+      <h3>Playlist Builder</h3>
+      <div class="pl-section">
+        <div class="pl-section-title">Create Bundle</div>
+        <div class="pl-map-list" id="pl-map-list"></div>
+        <button class="pl-btn primary" onclick="App.exportPlaylist()">Export as .dcpl</button>
+      </div>
+      <div class="pl-divider"></div>
+      <div class="pl-section">
+        <div class="pl-section-title">Import Bundle</div>
+        <div class="import-drop" onclick="document.getElementById('file-dcpl-import').click()">
+          Click to select a .dcpl file
+        </div>
+      </div>
+      <div class="import-close" onclick="App.closePlaylistModal()">CLOSE</div>
+    </div>
+  </div>
+
   <div id="loading-overlay">
     <h2>Doing stuff...</h2>
   </div>
 
   <canvas id="preview-confetti" style="position:fixed;inset:0;z-index:100;pointer-events:none;display:none"></canvas>
 
+  <div id="volume-popup">
+    <canvas id="volume-canvas" width="120" height="120"></canvas>
+    <span id="volume-label">50</span>
+  </div>
 
   <script src="script.js"></script>
 </body>
