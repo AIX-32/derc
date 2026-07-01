@@ -82,6 +82,8 @@
       <div class="mode-btn" id="mode-auto" title="Auto Polit — automatically hit every note perfectly">Auto Polit</div>
       <div class="mode-btn" id="mode-fail" title="Fail Net — survive at minimum health, cannot die">Fail Net</div>
       <div class="mode-btn" id="mode-hc" title="Hardcore — 2x song and note speed">Hardcore</div>
+      <div class="mode-btn" id="mode-mirror" title="Mirror — flip left and right lanes">Mirror</div>
+      <div class="mode-btn" id="mode-sd" title="Sudden Death — die instantly on any miss">Sudden Death</div>
     </div>
     <main class="right-panel" id="scrollContainer">
       <div class="cards-wrapper" id="cardsWrapper"></div>
@@ -93,6 +95,11 @@
         <option value="diff">Difficulty</option>
         <option value="title">Title</option>
       </select>
+    </div>
+    <div class="diff-bar">
+      <span class="diff-label">DIFF</span>
+      <input type="range" id="diff-slider" min="1" max="13" value="1" step="1">
+      <span class="diff-value" id="diff-value"><i class="pd-mask"></i><span id="diff-num">1</span></span>
     </div>
   </div>
 

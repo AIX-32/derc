@@ -176,9 +176,9 @@ const App = {
   beatTimeout: null,
   previewSource: null,
   _previewing: false, _previewingIdx: -1, _userSelected: false,
-  _searchQuery: '', _sortBy: 'bpm', _visibleIdx: [],
+  _searchQuery: '', _sortBy: 'bpm', _visibleIdx: [], _minDiff: 1, _rebuildTimer: null,
   _defaultTitles: new Set(['Looping the rooms', 'R.I.P', 'Break the Hierarchie', 'Zero talking']),
-  modes: { auto: false, fail: false, hc: false },
+  modes: { auto: false, fail: false, hc: false, mirror: false, sd: false },
 
   async init() {
     showLoading();
@@ -220,6 +220,8 @@ const App = {
     hideLoading();
     this.buildMapUI();
     this.bindEvents();
+    let ds = document.getElementById('diff-slider');
+    if (ds) { ds.style.backgroundImage = 'linear-gradient(to right, #fff 0%, #fff 0.5px, transparent 0.5px)'; }
     this.startUIPulse(this.maps[0].metadata.bpm);
     document.getElementById('play-btn').classList.add('show');
     requestAnimationFrame(() => this.updateStepping());
@@ -274,8 +276,10 @@ const App = {
 
   filterMaps() {
     let q = this._searchQuery.toLowerCase();
+    let minD = this._minDiff || 1;
     let idxs = this.maps.map((_, i) => i).filter(i => {
       let m = this.maps[i];
+      if ((m.metadata.difficulty || 1) < minD) return false;
       return !q || m.metadata.title.toLowerCase().includes(q) || (m.metadata.artist || '').toLowerCase().includes(q);
     });
     idxs.sort((a, b) => {
@@ -288,6 +292,22 @@ const App = {
   },
 
   buildMapUI() {
+    if (this._rebuildTimer) clearTimeout(this._rebuildTimer);
+    const wrap = document.getElementById('cardsWrapper');
+    const oldCards = wrap.querySelectorAll('.card:not(.entering)');
+    if (oldCards.length > 0) {
+      oldCards.forEach(c => c.classList.add('exiting'));
+      this._rebuildTimer = setTimeout(() => {
+        this._rebuildTimer = null;
+        this._doBuildUI();
+      }, 200);
+      return;
+    }
+    this._doBuildUI();
+  },
+
+  _doBuildUI() {
+    if (this._rebuildTimer) { clearTimeout(this._rebuildTimer); this._rebuildTimer = null; }
     this.filterMaps();
     const wrap = document.getElementById('cardsWrapper');
     wrap.innerHTML = '';
@@ -318,6 +338,8 @@ const App = {
       card.oncontextmenu = (e) => { e.preventDefault(); this.showCtxMenu(e, i); };
       wrap.appendChild(card);
       this.cards.push(card);
+      card.classList.add('entering');
+      card.addEventListener('animationend', () => card.classList.remove('entering'), { once: true });
     });
     this.updateStepping();
   },
@@ -378,6 +400,10 @@ const App = {
     let btn = document.getElementById('play-btn');
     btn.style.transform = 'rotate(-4deg) translateX(-3%)';
     document.querySelector('.menu-box').classList.add('beat');
+    let slider = document.getElementById('diff-slider');
+    slider.style.transition = 'background-color 0.05s ease-out';
+    slider.style.backgroundColor = '#3a3a3a';
+    requestAnimationFrame(() => { slider.style.transition = ''; });
 
     if (this.beatTimeout) clearTimeout(this.beatTimeout);
 
@@ -391,6 +417,7 @@ const App = {
       }
       btn.style.transform = '';
       document.querySelector('.menu-box').classList.remove('beat');
+      slider.style.backgroundColor = '';
     }, 120);
   },
 
@@ -427,7 +454,8 @@ const App = {
       let scores = JSON.parse(localStorage.getItem(key) || '[]');
       let now = new Date();
       let timeStr = now.toLocaleDateString() + ' ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      scores.push({ score: g.score, acc: (g.totalNotes === 0 ? 100 : Math.max(0, (g.hits / g.notes.filter(n => n.hit || n.missed).length) * 100)), combo: g.bestCombo, grade: this.gradeFor(g.totalNotes === 0 ? 100 : Math.max(0, (g.hits / g.notes.filter(n => n.hit || n.missed).length) * 100)), time: timeStr });
+      let modeStr = Object.entries(App.modes).filter(([_, v]) => v).map(([k]) => k.toUpperCase()).join(' ');
+      scores.push({ score: g.score, acc: (g.totalNotes === 0 ? 100 : Math.max(0, (g.hits / g.notes.filter(n => n.hit || n.missed).length) * 100)), combo: g.bestCombo, grade: this.gradeFor(g.totalNotes === 0 ? 100 : Math.max(0, (g.hits / g.notes.filter(n => n.hit || n.missed).length) * 100)), time: timeStr, modes: modeStr });
       scores.sort((a, b) => b.score - a.score);
       if (scores.length > 10) scores = scores.slice(0, 10);
       localStorage.setItem(key, JSON.stringify(scores));
@@ -547,7 +575,18 @@ const App = {
 
     document.getElementById('search-input').oninput = () => { this._searchQuery = document.getElementById('search-input').value; this.buildMapUI(); };
     document.getElementById('sort-select').onchange = () => { this._sortBy = document.getElementById('sort-select').value; this.buildMapUI(); };
+    document.getElementById('diff-slider').oninput = function () {
+      let val = parseInt(this.value);
+      let pct = ((val - 1) / 12) * 100;
+      this.style.backgroundImage = `linear-gradient(to right, #fff ${pct}%, #fff calc(${pct}% + 0.5px), transparent calc(${pct}% + 0.5px))`;
+      document.getElementById('diff-num').textContent = val;
+      App._minDiff = val;
+      App.buildMapUI();
+    };
 
+    let _cs = document.createElement('style'); _cs.id = '_cs'; document.head.appendChild(_cs);
+    document.addEventListener('mousedown', () => _cs.textContent = '* { cursor: url("cursor-small.png") 0 0, auto !important; }');
+    document.addEventListener('mouseup', () => _cs.textContent = '');
     window.addEventListener('mousemove', (e) => {
       if (this.view !== 'select') return;
       let x = (e.clientX / window.innerWidth - 0.5) * 20;
@@ -558,6 +597,8 @@ const App = {
     document.getElementById('mode-auto').onclick = () => this.toggleMode('auto');
     document.getElementById('mode-fail').onclick = () => this.toggleMode('fail');
     document.getElementById('mode-hc').onclick = () => this.toggleMode('hc');
+    document.getElementById('mode-mirror').onclick = () => this.toggleMode('mirror');
+    document.getElementById('mode-sd').onclick = () => this.toggleMode('sd');
     document.getElementById('end-back').onclick = () => { this.hideEndScreen(); this.setView('select'); };
     document.getElementById('end-restart').onclick = () => { this.hideEndScreen(); this.playSelected(); };
     document.getElementById('end-share').onclick = () => {
@@ -586,7 +627,7 @@ const App = {
     let key = mapTitle + '_scores';
     let scores = JSON.parse(localStorage.getItem(key) || '[]');
     if (!scores.length) { el.innerHTML = '<div class="score-entry" style="color:#555;font-size:0.7rem;border:none;">No scores yet</div>'; return; }
-    el.innerHTML = scores.map(s => `<div class="score-entry"><div class="s-top"><span class="g">${s.grade}</span><span class="s-score">${s.score}</span></div><div class="s-time">${s.time || ''}</div></div>`).join('');
+    el.innerHTML = scores.map(s => `<div class="score-entry"><div class="s-top"><span class="g">${s.grade}</span><span class="s-score">${s.score}</span></div><div class="s-time">${s.time || ''}${s.modes ? ' <span style="color:#666">' + s.modes + '</span>' : ''}</div></div>`).join('');
     document.getElementById('score-panel').style.display = 'block';
   },
 
@@ -722,6 +763,13 @@ const Game = {
     this.inBreak = false;
     this.totalNotes = this.notes.length;
     this.score = 0; this.combo = 0; this.bestCombo = 0; this.hits = 0; this.health = 100; this.particles = []; this.ended = false; this.paused = false;
+    if (App.modes.mirror) {
+      this.notes.forEach(n => {
+        if (n.position === 'left') n.position = 'right';
+        else if (n.position === 'right') n.position = 'left';
+      });
+      document.querySelector('.key-hints').innerHTML = '<span>W</span> TOP &nbsp; <span>D</span> LEFT &nbsp; <span>S</span> BOTTOM &nbsp; <span>A</span> RIGHT';
+    }
     this.updateHUD();
     document.getElementById('pause-overlay').classList.remove('show');
 
@@ -751,6 +799,7 @@ const Game = {
     if (this.audioSource) { this.audioSource.stop(); this.audioSource.disconnect(); this.audioSource = null; }
     masterGain.gain.setValueAtTime(0, AudioCtx.currentTime);
     setTimeout(() => masterGain.gain.setValueAtTime(0.5, AudioCtx.currentTime), 100);
+    document.querySelector('.key-hints').innerHTML = '<span>W</span> TOP &nbsp; <span>A</span> LEFT &nbsp; <span>S</span> BOTTOM &nbsp; <span>D</span> RIGHT';
   },
 
   resize() {
@@ -804,6 +853,7 @@ const Game = {
     this.updateHUD(); this.spawnText("MISS", "#f33");
     if (this.health <= 0 && !App.modes.fail) this.die();
     if (App.modes.fail) this.health = 1;
+    if (App.modes.sd) { this.die(); return; }
   },
   die() {
     this.ended = true;
